@@ -31,5 +31,13 @@ critics={'Lisa Rose': {'Lady in the Water': 2.5, 'Snakes on a Plane': 3.5,
 filt = CollaborativeFilter()
 filt.loadDataFromDict(critics)
 
+print "Toby's recommendations and similar people"
 print filt.getRecommendations('Toby')
+print filt.topMatches('Toby')
+print "\n"
+
+print "Movies similar to Superman Returns"
+movies = filt.transformPrefs(critics)
+filt.loadDataFromDict(movies)
+print filt.topMatches('Superman Returns')
 

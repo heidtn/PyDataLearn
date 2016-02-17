@@ -54,7 +54,7 @@ class CollaborativeFilter:
 
 		return num/den
 		
-
+	#finds other people most similar to the given person
 	def topMatches(self, person, n=5, similarity=None):
 		similarity = similarity or self.pearsonCorrelation
 		scores = [(similarity(self.rawData[person], self.rawData[other]),other) for other in self.rawData if other!=person]
@@ -63,6 +63,7 @@ class CollaborativeFilter:
 		scores.reverse()
 		return scores[0:n]
 
+	#finds recommendations for a person based on their ratings
 	def getRecommendations(self, person, similarity=None):
 		similarity = similarity or self.pearsonCorrelation
 		totals = {}
@@ -86,5 +87,13 @@ class CollaborativeFilter:
 		rankings.reverse()
 
 		return rankings
+
+	def transformPrefs(self, prefs):
+		result = {}
+		for person in prefs:
+			for item in prefs[person]:
+				result.setdefault(item, {})
+				result[item][person] = prefs[person][item]
+		return result
 
 

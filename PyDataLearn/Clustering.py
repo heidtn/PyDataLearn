@@ -1,6 +1,7 @@
 from math import sqrt
+import random
 
-
+#Hierarchical clustering
 #pearson can work with different size blogs (i.e. more words overrall)
 #I bet zipf lives here.  In the future lets check for disparity
 def pearson(v1, v2):
@@ -13,7 +14,7 @@ def pearson(v1, v2):
 	sum1Sq = sum([pow(v, 2) for v in v1])
 	sum2Sq = sum([pow(v, 2) for v in v2])
 
-	pSum = sum([v1[i]*v2[i] for i in range(len(v1))])
+	pSum = sum([v1[i]*v2[i] for i in xrange(len(v1))])
 
 	num = pSum - (sum1*sum2/len(v1))
 	den = sqrt((sum1Sq - pow(sum1, 2)/len(v1)) * (sum2Sq - pow(sum2, 2)/len(v1)))
@@ -34,8 +35,9 @@ def hcluster(rows, distance=pearson):
 
 		#find the next smallest distance
 		for i in xrange(len(clust)):
+			#print i, "/", len(clust) 
 			for j in xrange(i + 1, len(clust)):
-				if(clust[i].id, clust[j].id) not in distances:
+				if (clust[i].id, clust[j].id) not in distances:
 					distances[(clust[i].id, clust[j].id)] = distance(clust[i].vec, clust[j].vec)
 
 				d = distances[(clust[i].id, clust[j].id)]
@@ -65,7 +67,7 @@ def hcluster(rows, distance=pearson):
 #OH GREAT, LOOK, RECURSION (fortunately it's tail recursion...)
 def printclust(clust, labels=None, n=0):
 	#hieracy layout indentation!
-	for i in range(n): print ' ',
+	for i in xrange(n): print ' ',
 	if clust.id < 0:
 		#negative id means that this is a branch
 		print '-'
@@ -76,6 +78,55 @@ def printclust(clust, labels=None, n=0):
 
 	if clust.left != None: printclust(clust.left, labels=labels, n=n+1)
 	if clust.right != None: printclust(clust.right, labels=labels, n=n+1)
+
+
+#K-means clustering
+def kcluster(rows, distance=pearson, k=4):
+	#determine the min and max values for each point
+	ranges = [min([row[i] for row in rows]), max([row[i] for row in rows]) for i in xrange(len(rows))]
+
+	#create the centroids
+	clusters = [[random.rand()*(ranges[i][1] - ranges[i][0]) + ranges[i][0] for i in xrange(len(rows[0]))] for j in range(k)]
+
+	lastmatches = None
+	for t in xrange(100):
+		print 'iteratiion %d' %t
+		bestmatches = [[] for i in xrange(k)]
+
+		#find which centroid is the closes to each row
+		for j in xrange(len(rows)):
+			row = rows[j]
+			bestmatch = 0
+			for i in xrange(k):
+				d = distance(clusters[i], row)
+				if d < distance(clusters[bestmatch], row): bestmatch = i
+			bestmatches[bestmatch].append(j)
+
+		if bestmatches == lastmatches: break
+		lastmatches = bestmatches
+
+		#move the centroids to the average
+		for i in xrange(k):
+			avgs = [0.0]*len(rows[0])
+			if len(bestmatches[i]) > 0:
+				for rowid in bestmatches[i]:
+					for m in xrange(len(rows[rowid])):
+						avgs[m] += rows[rowid][m]
+				for j in xrange(len(avgs)):
+					avgs[j] /= len(bestmatches[i])
+				clusters[i] = avgs
+
+	return bestmatches
+
+
+
+
+def rotatematrix(data):
+	newdata = []
+	for i in xrange(len(data[0])):
+		newrow = [data[j][i] for j in xrange(len(data))]
+		newdata.append(newrow)
+	return newdata
 
 class bicluster:
 	def __init__(self, vec, left=None, right=None, distance=0.0, ID=None):

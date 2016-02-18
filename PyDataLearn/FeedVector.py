@@ -2,6 +2,10 @@ import feedparser
 import re
 import argparse
 
+"""
+creates a table of word counts from an input list of xml or rss feeds
+"""
+
 def getwordcounts(url):
 	d = feedparser.parse(url)
 	wc = {}

@@ -5,13 +5,18 @@ import tweepy
 import time
 import json
 
-from nltk.tag import pos_tag
+import os
+
+import nltk
+from nltk.tag.perceptron import PerceptronTagger
+tagger = PerceptronTagger()
 
 #Variables that contains the user credentials to access Twitter API 
-access_token = "724753142-XedFlg9sid5gV3lHQY1IT43qrUpSc6EQknPNCVBU"
-access_token_secret = ""
-consumer_key = "GdQRiElw0Nb89whjxJ0C1Lndv"
-consumer_secret = ""
+#I've defined these as environment variables so dirty github bots can't steal my sweet sweet twitter credentials
+access_token = os.environ["ACCESS_TOKEN"]
+access_token_secret = os.environ["ACCESS_TOKEN_SECRET"]
+consumer_key = os.environ["CONSUMER_KEY"]
+consumer_secret = os.environ["CONSUMER_KEY_SECRET"]
 
 def getfollowerstweets(api):
     friends = {}
@@ -48,20 +53,39 @@ def parsetweets(tweets):
     for key in tweets:
         print "parsing for", key
         for tweet in tweets[key]:
-            nouns = [word for word, val in pos_tag(tweet.split()) if val == "NN"]
+            tokens = nltk.word_tokenize(tweet)
+            tagset = None
+            nouns = [word for word, val in nltk.tag._pos_tag(tokens, tagset, tagger) if val in ["NN", "NNP"]]
             for noun in nouns:
-                if "http" in noun or "www" in noun:
+                if "http" in noun or "www" in noun or noun == "RT" or noun == "@" or "t.co" in noun:
                     continue
-                noun.replace("!", "").replace("?","").replace(",","")
+                noun = noun.replace("!", "").replace("?","").replace(",","")
+                noun = noun.lower()
                 collections.setdefault(key, {})
                 collections[key].setdefault(noun, 0)
                 collections[key][noun] += 1
                 if noun not in allnouns:
                     allnouns.append(noun)
 
-
-
     return collections, allnouns
+
+def saveresults(collections, words, filename="twittervecs.csv"):
+    f = open(filename, 'w')
+    words.sort()
+    f.write("users\t")
+    for word in words:
+        f.write(repr(word))
+        f.write('\t')
+    f.write('\n')
+    for user, collection in collections.iteritems():
+        f.write(user)
+        for word in words:
+            if word in collection:
+                f.write(repr(collection[word]))
+            else:
+                f.write('0')
+            f.write('\t')
+        f.write('\n')
 
 def getapi():
     #This handles Twitter authetification and the connection to Twitter Streaming API
@@ -75,4 +99,8 @@ def getapi():
 if __name__ == '__main__':
     api = getapi()
 
-    getfollowers(api)
+    friends = getfollowers(api)
+
+    collections, nouns = parsetweets(friends)
+
+    saveresults(collections, nouns)

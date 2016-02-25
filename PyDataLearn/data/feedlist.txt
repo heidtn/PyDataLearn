@@ -95,3 +95,4 @@ http://www.valleywag.com/index.xml
 http://www.we-make-money-not-art.com/index.rdf
 http://www.wired.com/rss/index.xml
 http://www.wonkette.com/index.xml
+http://www.buzzfeed.com/index.xml

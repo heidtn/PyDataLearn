@@ -83,10 +83,14 @@ def printclust(clust, labels=None, n=0):
 #K-means clustering
 def kcluster(rows, distance=pearson, k=4):
 	#determine the min and max values for each point
-	ranges = [min([row[i] for row in rows]), max([row[i] for row in rows]) for i in xrange(len(rows))]
+	ranges = [(min([row[i] for row in rows]), max([row[i] for row in rows])) for i in xrange(len(rows))]
 
 	#create the centroids
-	clusters = [[random.rand()*(ranges[i][1] - ranges[i][0]) + ranges[i][0] for i in xrange(len(rows[0]))] for j in range(k)]
+	clusters = []
+	for i in xrange(k):
+		mx = ranges[i][1]
+		mn = ranges[i][0]
+		clusters.append([random.random()*(mx - mn) + mn for i in xrange(len(rows[0]))])
 
 	lastmatches = None
 	for t in xrange(100):
@@ -118,8 +122,61 @@ def kcluster(rows, distance=pearson, k=4):
 
 	return bestmatches
 
+def tanimoto(v1, v2):
+	c1, c2, shr=0, 0, 0
+	for i in xrange(len(v1)):
+		if v1[i] != 0: c1 += 1
+		if v2[i] != 0: c2 += 1
+		if v1[i] != 0 and v2[i] != 0: shr += 1
 
+	return 1.0 - (float(shr)/(c1 + c2 - shr))
 
+# This is for 2D cluster display
+def scaledown(data, distance=pearson, rate=0.01):
+	n = len(data)
+
+	#distance between every pair of items
+	realdist = [[distance(data[i], data[j]) for j in xrange(n)] for i in xrange(0, n)]
+
+	outersum = 0.0 
+
+	#randomly initialize the starting xy locations
+	loc = [[random.random(), random.random()] for i in xrange(n)]
+	fakedist = [[0.0 for j in xrange(n)] for i in xrange(n)]
+
+	lasterror = None
+
+	for m in xrange(0, 1000):
+		#Find projected distances
+		for i in xrange(n):
+			for j in xrange(n):
+				fakedist[i][j] = sqrt(sum([pow(loc[i][x] - loc[j][x], 2) for x in xrange(len(loc[i]))]))
+
+		grad = [[0.0, 0.0] for i in xrange(n)]
+
+		totalerror=0
+		for k in xrange(n):
+			for j in xrange(n):
+				if j==k: continue
+				#error is percent difference between distances
+				errorterm = (fakedist[j][k] - realdist[j][k])/realdist[j][k]
+
+				#each point needs to be moved away from or towards the other in proportion to how much error it has
+				grad[k][0] += ((loc[k][0] - loc[j][0]) / fakedist[j][k])*errorterm
+				grad[k][1] += ((loc[k][1] - loc[j][1]) / fakedist[j][k])*errorterm
+
+				totalerror += abs(errorterm)
+
+		print "total error: ", totalerror
+
+		if lasterror and lasterror < totalerror: break
+		lasterror = totalerror
+
+		for k in xrange(n):
+			loc[k][0] -= rate*grad[k][0]
+			loc[k][1] -= rate*grad[k][1]
+
+	return loc
 
 def rotatematrix(data):
 	newdata = []

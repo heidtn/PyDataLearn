@@ -6,6 +6,8 @@ from pysqlite2 import dbapi2 as sqlite
 
 import re
 
+import argparse
+
 ignorewords = set(['the', 'of', 'to', 'and', 'a', 'in', 'is', 'it'])
 
 class Crawler:
@@ -87,9 +89,10 @@ class Crawler:
 			if word in ignorewords: continue
 			wordid = self.getentryid('wordlist', 'word', word)
 			self.con.execute("insert into linkwords(linkid, wordid) values (%d, %d)" % (linkid, wordid))
-		pass
+	
 
 	def createindextables(self):
+		#self.con.execute('drop table is exists urllist')
 		self.con.execute('create table urllist(url)')
 		self.con.execute('create table wordlist(word)')
 		self.con.execute('create table wordlocation(urlid, wordid, location)')
@@ -102,6 +105,32 @@ class Crawler:
 		self.con.execute('create index urlfromidx on link(fromid)')
 		self.dbcommit()
 		pass	
+
+	#pagerank is determined by the rank of other sites linking to a particular site
+	#if more sites link to a particular site then it has a higher rank
+	def calculatepagerank(self, iterations=20):
+		self.con.execute('drop table if exists pagerank')
+		self.con.execute('create table pagerank(urlid primary key, score)')
+
+		self.con.execute('insert into pagerank select rowid, 1.0 from urllist')
+		self.dbcommit()
+
+		for i in xrange(iterations):
+			print "iteration %d" % (i)
+			for (urlid,) in self.con.execute('select rowid from urllist'):
+				pr = 0.15
+
+				#link through all pages that link to this one
+				for (linker,) in self.con.execute('select distinct fromid from link where toid=%d' % urlid):
+					#get the pagerank of the linker
+					linkingpr = self.con.execute('select score from pagerank where urlid=%d' % linker).fetchone()[0]
+
+					#get the total number of links from the linker
+					linkingcount = self.con.execute('select count(*) from link where fromid=%d' % linker).fetchone()[0]
+
+					pr += .85*(linkingpr/linkingcount)
+					self.con.execute('update pagerank set score=%f where urlid=%d' % (pr, urlid))
+				self.dbcommit()
 
 	def crawl(self, pages, depth=2):
 		for i in xrange(depth):
@@ -131,15 +160,29 @@ class Crawler:
 
 
 def main():
-	print "all these positions crawl"
+	parser = argparse.ArgumentParser(description='web crawler')
+	parser.add_argument("--tables", "-t",
+						help='creates the tables for the database, run this if youve never crawled', action="store_true")
+	parser.add_argument("--rank", "-r",
+						help='run pagerank', action="store_true")
+	parser.add_argument("--crawl", "-c",
+					    help="run the web crawler", action="store_true")
+	
+
+	args = parser.parse_args()
+
 	pagelist = ['http://www.hackaday.com']
 	crawler = Crawler('searchindex.db')
 
-	"""
+	if args.tables:
+		print "lets get it started in hah"
 		crawler.createindextables()
-	"""		
-
-	crawler.crawl(pagelist)
+	if args.crawl:
+		print "all these positions crawl"
+		crawler.crawl(pagelist)
+	if args.rank:
+		print "it's getting rank in here"
+		crawler.calculatepagerank()
 
 if __name__ == "__main__":
 	main()
